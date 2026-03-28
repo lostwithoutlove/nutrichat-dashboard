@@ -1,0 +1,88 @@
+# Chat mutation - send a message (text, voice, or photo) and get AI response
+mutation Chat($input: ChatInput!) {
+  chat(input: $input) {
+    conversationId
+    userMessage {
+      id
+      conversationId
+      userId
+      role
+      content
+      tokenCount
+      createdAt
+    }
+    assistantMessage {
+      id
+      conversationId
+      role
+      content
+      tokenCount
+      createdAt
+    }
+    detectedIntent
+    intentConfidence
+    dataLogged
+    loggedData {
+      tableName
+      recordId
+      description
+    }
+    transcribedText
+    cached
+    tokenUsage {
+      promptTokens
+      completionTokens
+      totalTokens
+    }
+  }
+}
+
+# Query to get messages for a conversation
+query GetMessages($conversationId: UUID!, $limit: Int, $offset: Int) {
+  messages(conversationId: $conversationId, limit: $limit, offset: $offset) {
+    nodes {
+      id
+      conversationId
+      userId
+      role
+      content
+      tokenCount
+      createdAt
+    }
+    total
+  }
+}
+
+# Query to get all conversations
+query GetConversations($limit: Int, $offset: Int) {
+  conversations(limit: $limit, offset: $offset) {
+    nodes {
+      id
+      title
+      createdAt
+      updatedAt
+      userId
+    }
+    total
+  }
+}
+
+# Query to get a single conversation with messages
+query GetConversation($id: UUID!, $messagesLimit: Int, $messagesOffset: Int) {
+  conversation(id: $id) {
+    id
+    title
+    createdAt
+    updatedAt
+    userId
+    messages(limit: $messagesLimit, offset: $messagesOffset) {
+      id
+      conversationId
+      userId
+      role
+      content
+      tokenCount
+      createdAt
+    }
+  }
+}

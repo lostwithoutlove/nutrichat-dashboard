@@ -1,0 +1,35 @@
+# Upload a PDF report (blood work, prescription)
+mutation UploadReport($input: UploadReportInput!) {
+  uploadReport(input: $input) {
+    id
+    userId
+    reportedAt
+    reportType
+    title
+    filePath
+    note
+    createdAt
+  }
+}
+
+# Get all user reports
+query GetReports($limit: Int, $offset: Int) {
+  reports(limit: $limit, offset: $offset) {
+    nodes {
+      id
+      userId
+      reportedAt
+      reportType
+      title
+      filePath
+      note
+      createdAt
+    }
+    total
+  }
+}
+
+# Get a signed download URL for a report PDF
+query GetReportDownloadUrl($reportId: UUID!) {
+  reportDownloadUrl(reportId: $reportId)
+}

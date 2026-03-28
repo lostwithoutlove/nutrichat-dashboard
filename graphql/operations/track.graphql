@@ -1,0 +1,20 @@
+query GetWeightHistory($kind: String!, $startDay: String, $endDay: String, $limit: Int) {
+  vitals(kind: $kind, startDay: $startDay, endDay: $endDay, limit: $limit) {
+    id
+    value
+    unit
+    recordedAt
+    day
+  }
+}
+
+query GetMenstrualHistory($name: String, $startDay: String, $endDay: String, $limit: Int) {
+  symptoms(name: $name, startDay: $startDay, endDay: $endDay, limit: $limit) {
+    id
+    name
+    severity
+    startedAt
+    notes
+    day
+  }
+}

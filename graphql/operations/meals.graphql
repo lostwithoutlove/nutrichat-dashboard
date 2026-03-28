@@ -1,0 +1,71 @@
+query GetMeals($limit: Int, $offset: Int, $day: String) {
+  meals(limit: $limit, offset: $offset, day: $day) {
+    nodes {
+      id
+      userId
+      name
+      consumedAt
+      day
+      createdAt
+      notes
+      source
+      totals {
+        caloriesKcal
+        proteinG
+        carbsG
+        fatG
+      }
+      items {
+        id
+        mealId
+        foodName
+        quantity
+        unit
+        caloriesKcal
+        proteinG
+        carbsG
+        fatG
+        fiberG
+        sugarG
+        sodiumMg
+        micros
+      }
+    }
+    total
+  }
+}
+
+mutation DeleteMeal($id: UUID!) {
+  deleteMeal(id: $id)
+}
+
+mutation EditMeal($input: EditMealInput!) {
+  editMeal(input: $input) {
+    id
+    name
+    consumedAt
+    notes
+    day
+    items {
+      id
+      foodName
+      quantity
+      unit
+      caloriesKcal
+      proteinG
+      carbsG
+      fatG
+      fiberG
+    }
+    totals {
+      caloriesKcal
+      proteinG
+      carbsG
+      fatG
+    }
+  }
+}
+
+mutation DeleteMealItem($id: UUID!) {
+  deleteMealItem(id: $id)
+}

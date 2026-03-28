@@ -1,0 +1,10 @@
+query GetDailyAggregates($startDay: String!, $endDay: String!, $limit: Int, $offset: Int) {
+  dailyAggregates(startDay: $startDay, endDay: $endDay, limit: $limit, offset: $offset) {
+    nodes {
+      day
+      totalCalKcal
+      goalCalKcal
+    }
+    total
+  }
+}

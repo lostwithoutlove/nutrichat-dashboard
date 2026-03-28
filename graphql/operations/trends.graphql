@@ -1,0 +1,21 @@
+query GetWeeklyNutritionTrends($timePeriod: TimePeriod!) {
+  nutritionTrends(timePeriod: $timePeriod) {
+    timePeriod
+    trends {
+      date
+      calories
+      protein
+      carbs
+      fat
+      fiber
+    }
+    averages {
+      calories
+      caloriesTarget
+      protein
+      carbs
+      fat
+      fiber
+    }
+  }
+}

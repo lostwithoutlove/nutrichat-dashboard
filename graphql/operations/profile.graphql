@@ -1,0 +1,51 @@
+query Me {
+  me {
+    userId
+    fullName
+    dob
+    sex
+    heightCm
+    weightKg
+    targetWeightKg
+    country
+    timezone
+    createdAt
+    updatedAt
+  }
+}
+
+mutation CreateProfile($input: CreateProfileInput!) {
+  createProfile(input: $input) {
+    userId
+    fullName
+    dob
+    sex
+    heightCm
+    weightKg
+    targetWeightKg
+    country
+    timezone
+    createdAt
+    updatedAt
+  }
+}
+
+mutation EditProfile($input: EditProfileInput!) {
+  editProfile(input: $input) {
+    userId
+    fullName
+    dob
+    sex
+    heightCm
+    weightKg
+    targetWeightKg
+    country
+    timezone
+    createdAt
+    updatedAt
+  }
+}
+
+mutation DeleteProfile {
+  deleteProfile
+}
