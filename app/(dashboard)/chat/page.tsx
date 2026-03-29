@@ -9,6 +9,8 @@ import {
   useChatMutation,
   useGetConversationsLazyQuery,
   useGetConversationLazyQuery,
+  useUploadReportMutation,
+  ReportType,
 } from "@/generated/graphql";
 
 interface Message {
@@ -54,6 +56,7 @@ export default function ChatPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [chatMutation] = useChatMutation();
+  const [uploadReport] = useUploadReportMutation();
   const [fetchConversations] = useGetConversationsLazyQuery({ fetchPolicy: "network-only" });
   const [fetchConversation] = useGetConversationLazyQuery({ fetchPolicy: "network-only" });
 
@@ -177,8 +180,53 @@ export default function ChatPage() {
   const handleSendMessage = (text: string) => sendMessage(text);
   const handleSendImage = (base64: string) =>
     sendMessage("What's in this photo?", base64);
-  const handleSendFile = (_base64: string, fileName: string) => {
-    sendMessage(`Uploading: ${fileName}`);
+  const handleSendFile = async (base64: string, fileName: string) => {
+    const userMsg: Message = {
+      id: `user-${Date.now()}`,
+      content: `Uploading: ${fileName}`,
+      role: "user",
+      createdAt: new Date().toISOString(),
+      conversationId: conversationId ?? "",
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setIsThinking(true);
+    try {
+      const { data } = await uploadReport({
+        variables: {
+          input: {
+            fileBase64: base64,
+            fileName: fileName,
+            title: fileName,
+            reportType: ReportType.Lab,
+          },
+        },
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `ai-${Date.now()}`,
+          content: data?.uploadReport
+            ? `Report "${data.uploadReport.title}" uploaded successfully!`
+            : "Report uploaded.",
+          role: "assistant",
+          createdAt: new Date().toISOString(),
+          conversationId: conversationId ?? "",
+        },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: `error-${Date.now()}`,
+          content: "Failed to upload report. Please try again.",
+          role: "assistant",
+          createdAt: new Date().toISOString(),
+          conversationId: "",
+        },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   // Loading state

@@ -43,27 +43,91 @@ export default function TrackPage() {
   const [chatMutation] = useChatMutation();
 
   const vitals = weightData?.vitals ?? [];
-  const latestWeight = vitals.length > 0 ? vitals[vitals.length - 1] : null;
 
-  const bmi = useMemo(() => {
-    if (!profile?.heightCm || !latestWeight?.value) return null;
-    const heightM = profile.heightCm / 100;
-    return latestWeight.value / (heightM * heightM);
-  }, [profile?.heightCm, latestWeight?.value]);
+  // Use profile weight as fallback when no vitals exist
+  const chartData = useMemo(() => {
+    if (vitals.length > 0) {
+      return vitals.map((v) => ({ day: v.day, value: v.value }));
+    }
+    // No vitals — show profile weight as a starting data point
+    if (profile?.weightKg) {
+      const profileDate = profile.updatedAt
+        ? new Date(profile.updatedAt).toISOString().split("T")[0]
+        : today;
+      return [{ day: profileDate, value: profile.weightKg }];
+    }
+    return [];
+  }, [vitals, profile?.weightKg, profile?.updatedAt, today]);
 
-  const bmiStatus = bmi === null ? "N/A" : bmi < 18.5 ? "Low" : bmi < 25 ? "Normal" : "High";
+  // Weight metrics — match mobile app logic
+  const weightEntries = useMemo(() => {
+    return vitals
+      .filter((v) => v.value != null)
+      .map((v) => ({ day: v.day, weight: v.value }))
+      .sort((a, b) => a.day.localeCompare(b.day));
+  }, [vitals]);
+
+  const currentWeight = weightEntries.length > 0
+    ? weightEntries[weightEntries.length - 1].weight
+    : profile?.weightKg ?? null;
+  const previousWeight = weightEntries.length > 1
+    ? weightEntries[weightEntries.length - 2].weight
+    : null;
+  const weightChange = currentWeight && previousWeight
+    ? currentWeight - previousWeight
+    : null;
+
+  // BMI
+  const heightM = profile?.heightCm ? profile.heightCm / 100 : null;
+  const bmi = currentWeight && heightM
+    ? currentWeight / (heightM * heightM)
+    : null;
+  const bmiStatus = bmi === null ? "N/A" : bmi < 18.5 ? "Low" : bmi < 25 ? "Normal" : bmi < 30 ? "High" : "High";
+
+  // Weight status derived from BMI (like mobile app)
+  const weightStatus = bmi === null ? "N/A" : bmi < 18.5 ? "Low" : bmi < 25 ? "Normal" : "High";
+
+  // Normal weight range for height
+  const weightRange = heightM
+    ? `${Math.round(18.5 * heightM * heightM)}-${Math.round(24.9 * heightM * heightM)} kg`
+    : null;
+
+  // Auto-calculated target weight (if BMI > 25, suggest BMI 24)
+  const suggestedTarget = useMemo(() => {
+    if (!heightM || !currentWeight) return null;
+    const currentBmi = currentWeight / (heightM * heightM);
+    if (currentBmi >= 25) return Math.round(24 * heightM * heightM);
+    if (currentBmi < 18.5) return Math.round(20 * heightM * heightM);
+    return null;
+  }, [heightM, currentWeight]);
+
+  const targetWeight = profile?.targetWeightKg ?? suggestedTarget;
+
+  const [logError, setLogError] = useState("");
 
   const handleLogWeight = async () => {
     const weight = parseFloat(weightInput);
-    if (isNaN(weight) || weight < 20 || weight > 300) return;
+    if (isNaN(weight) || weight < 10 || weight > 500) {
+      setLogError("Enter a valid weight between 10-500 kg");
+      return;
+    }
+    setLogError("");
     setIsLogging(true);
     try {
-      await chatMutation({ variables: { input: { message: `Log my weight as ${weight} kg` } } });
+      const result = await chatMutation({
+        variables: { input: { message: `I weigh ${weight} kg` } },
+      });
+      if (result.errors?.length) {
+        setLogError(result.errors[0].message);
+        return;
+      }
+      // Weight logged successfully via chat — close modal and refetch
       setShowLogModal(false);
       setWeightInput("");
-      refetchWeight();
+      // Delay refetch to give backend time to process the logged data
+      setTimeout(() => refetchWeight(), 2000);
     } catch (err) {
-      console.error("Failed to log weight:", err);
+      setLogError(err instanceof Error ? err.message : "Failed to log weight");
     } finally {
       setIsLogging(false);
     }
@@ -102,9 +166,19 @@ export default function TrackPage() {
               <span className="text-xs font-medium text-sky-600">Weight</span>
             </div>
             <p className="text-xl font-bold text-sky-900">
-              {latestWeight ? `${latestWeight.value} ${latestWeight.unit || "kg"}` : "—"}
+              {currentWeight ? `${currentWeight} kg` : "—"}
             </p>
-            <StatusBadge label={latestWeight ? "Normal" : "N/A"} />
+            <div className="flex items-center gap-2">
+              <StatusBadge label={weightStatus} />
+              {weightChange !== null && (
+                <span className={`text-xs font-medium ${weightChange > 0 ? "text-red-500" : weightChange < 0 ? "text-emerald-500" : "text-sky-400"}`}>
+                  {weightChange > 0 ? "+" : ""}{weightChange.toFixed(1)} kg
+                </span>
+              )}
+            </div>
+            {weightRange && (
+              <p className="mt-1 text-[10px] text-sky-400">Normal: {weightRange}</p>
+            )}
           </div>
 
           <div className="rounded-xl bg-white p-4 shadow-sm">
@@ -122,23 +196,31 @@ export default function TrackPage() {
               <span className="text-xs font-medium text-sky-600">Target</span>
             </div>
             <p className="text-xl font-bold text-sky-900">
-              {profile?.targetWeightKg ? `${profile.targetWeightKg} kg` : "—"}
+              {targetWeight ? `${targetWeight} kg` : "—"}
             </p>
-            <StatusBadge label="Normal" />
+            {targetWeight && currentWeight && (
+              <p className="mt-1 text-[10px] text-sky-400">
+                {currentWeight > targetWeight
+                  ? `${(currentWeight - targetWeight).toFixed(1)} kg to go`
+                  : currentWeight < targetWeight
+                    ? `${(targetWeight - currentWeight).toFixed(1)} kg to gain`
+                    : "At target!"}
+              </p>
+            )}
           </div>
         </div>
 
         {/* Weight Chart */}
         <div className="mb-6 rounded-xl bg-white p-5 shadow-sm">
           <h3 className="mb-4 text-sm font-bold text-sky-900">Weight History (90 days)</h3>
-          {weightLoading && vitals.length === 0 ? (
+          {weightLoading && chartData.length === 0 ? (
             <div className="flex h-[250px] items-center justify-center">
               <div className="h-6 w-6 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
             </div>
           ) : (
             <WeightChart
-              data={vitals.map((v) => ({ day: v.day, value: v.value }))}
-              targetWeight={profile?.targetWeightKg}
+              data={chartData}
+              targetWeight={targetWeight}
             />
           )}
         </div>
@@ -153,6 +235,14 @@ export default function TrackPage() {
               day: "numeric",
             })}
             periodsLogged={sortedSymptoms.length}
+            onLogSymptom={async (symptom, severity, notes) => {
+              const msg = `Log ${symptom} symptom, severity ${severity}/10${notes ? `, notes: ${notes}` : ""}`;
+              const { data, errors } = await chatMutation({
+                variables: { input: { message: msg } },
+              });
+              if (errors?.length) throw new Error(errors[0].message);
+              if (!data?.chat?.dataLogged) throw new Error("Symptom was not logged. Try again.");
+            }}
           />
         )}
 
@@ -161,6 +251,9 @@ export default function TrackPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
             <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-xl">
               <h3 className="mb-4 text-base font-bold text-sky-900">Log Weight</h3>
+              {logError && (
+                <div className="mb-3 rounded-md bg-red-50 p-2 text-xs text-red-600">{logError}</div>
+              )}
               <div className="mb-4">
                 <label className="mb-1 block text-sm text-sky-600">Weight (kg)</label>
                 <input

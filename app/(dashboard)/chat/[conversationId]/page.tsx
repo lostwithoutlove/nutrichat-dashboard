@@ -5,7 +5,12 @@ import { useParams } from "next/navigation";
 import ChatBubble from "@/components/chat/ChatBubble";
 import ChatInput from "@/components/chat/ChatInput";
 import TypingIndicator from "@/components/chat/TypingIndicator";
-import { useGetConversationQuery, useChatMutation } from "@/generated/graphql";
+import {
+  useGetConversationQuery,
+  useChatMutation,
+  useUploadReportMutation,
+  ReportType,
+} from "@/generated/graphql";
 
 interface LocalMessage {
   id: string;
@@ -33,6 +38,7 @@ export default function ConversationPage() {
   const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [chatMutation] = useChatMutation();
+  const [uploadReport] = useUploadReportMutation();
 
   const { data, loading } = useGetConversationQuery({
     variables: {
@@ -133,8 +139,35 @@ export default function ConversationPage() {
   const handleSendMessage = (text: string) => sendMessage(text);
   const handleSendImage = (base64: string) =>
     sendMessage("What's in this photo?", base64);
-  const handleSendFile = (_base64: string, fileName: string) => {
-    sendMessage(`Uploading: ${fileName}`);
+  const handleSendFile = async (base64: string, fileName: string) => {
+    setLocalMessages((prev) => [
+      ...prev,
+      { id: `local-upload-${Date.now()}`, content: `Uploading: ${fileName}`, role: "user", createdAt: new Date().toISOString() },
+    ]);
+    setIsThinking(true);
+    try {
+      const { data: uploadData } = await uploadReport({
+        variables: {
+          input: { fileBase64: base64, fileName, title: fileName, reportType: ReportType.Lab },
+        },
+      });
+      setLocalMessages((prev) => [
+        ...prev,
+        {
+          id: `local-upload-done-${Date.now()}`,
+          content: uploadData?.uploadReport ? `Report "${uploadData.uploadReport.title}" uploaded!` : "Report uploaded.",
+          role: "assistant",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    } catch {
+      setLocalMessages((prev) => [
+        ...prev,
+        { id: `error-${Date.now()}`, content: "Failed to upload report.", role: "assistant", createdAt: new Date().toISOString() },
+      ]);
+    } finally {
+      setIsThinking(false);
+    }
   };
 
   return (

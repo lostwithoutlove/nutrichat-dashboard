@@ -2,20 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 import { signUp, signInWithGoogle } from "@/lib/auth";
 
 export default function SignupPage() {
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    if (!fullName.trim()) {
+      setError("Please enter your full name");
+      return;
+    }
     if (password !== confirmPassword) {
       setError("Passwords don't match");
       return;
@@ -74,6 +83,12 @@ export default function SignupPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
+          <label htmlFor="fullName" className="mb-1 block text-sm font-medium text-sky-900">Full Name</label>
+          <input id="fullName" type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} required
+            className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            placeholder="Your full name" />
+        </div>
+        <div>
           <label htmlFor="email" className="mb-1 block text-sm font-medium text-sky-900">Email</label>
           <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
             className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
@@ -81,17 +96,39 @@ export default function SignupPage() {
         </div>
         <div>
           <label htmlFor="password" className="mb-1 block text-sm font-medium text-sky-900">Password</label>
-          <input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required
-            className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            placeholder="Min 6 characters" />
+          <div className="relative">
+            <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} required
+              className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 pr-10 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              placeholder="Min 6 characters" />
+            <button type="button" onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sky-400 hover:text-sky-600">
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
         <div>
           <label htmlFor="confirmPassword" className="mb-1 block text-sm font-medium text-sky-900">Confirm Password</label>
-          <input id="confirmPassword" type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
-            className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
-            placeholder="Confirm your password" />
+          <div className="relative">
+            <input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required
+              className="w-full rounded-md border border-sky-100 bg-sky-50 px-3 py-2.5 pr-10 text-sm text-sky-900 outline-none transition focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+              placeholder="Confirm your password" />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-sky-400 hover:text-sky-600">
+              {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
-        <button type="submit" disabled={loading}
+        <div className="flex items-start gap-2">
+          <input type="checkbox" id="terms" checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-sky-200 accent-emerald-500" />
+          <label htmlFor="terms" className="text-xs text-sky-600">
+            I agree to the{" "}
+            <a href="https://www.nutrichat.co/support.html" target="_blank" rel="noopener noreferrer" className="font-medium text-emerald-600 hover:text-emerald-700">Terms of Service</a>
+            {" "}and{" "}
+            <a href="https://www.nutrichat.co/support.html" target="_blank" rel="noopener noreferrer" className="font-medium text-emerald-600 hover:text-emerald-700">Privacy Policy</a>
+          </label>
+        </div>
+        <button type="submit" disabled={loading || !agreedToTerms}
           className="w-full rounded-md bg-emerald-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-emerald-600 disabled:opacity-50">
           {loading ? "Creating account..." : "Create account"}
         </button>

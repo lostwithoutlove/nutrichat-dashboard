@@ -7,7 +7,7 @@ import DailySummaryCard from "@/components/food/DailySummaryCard";
 import MealCard from "@/components/food/MealCard";
 import CalendarHeatmap from "@/components/food/CalendarHeatmap";
 import NutritionTrends from "@/components/food/NutritionTrends";
-import { useGetMealsQuery, useMeQuery, useDeleteMealMutation } from "@/generated/graphql";
+import { useGetMealsQuery, useMeQuery, useDeleteMealMutation, useEditMealMutation, useDeleteMealItemMutation } from "@/generated/graphql";
 import { formatDateToYMD } from "@/utils/dateUtils";
 
 function computeGoals(profile: { weightKg?: number | null } | null | undefined) {
@@ -22,9 +22,19 @@ function computeGoals(profile: { weightKg?: number | null } | null | undefined) 
   };
 }
 
+function isEditableDate(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((today.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 && diffDays <= 1;
+}
+
 export default function FoodPage() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const day = formatDateToYMD(selectedDate);
+  const canEdit = isEditableDate(selectedDate);
 
   const { data: meData } = useMeQuery();
   const goals = useMemo(() => computeGoals(meData?.me), [meData?.me]);
@@ -35,6 +45,8 @@ export default function FoodPage() {
   });
 
   const [deleteMeal] = useDeleteMealMutation();
+  const [editMeal] = useEditMealMutation();
+  const [deleteMealItem] = useDeleteMealItemMutation();
   const meals = mealsData?.meals?.nodes ?? [];
 
   const summary = useMemo(() => {
@@ -51,13 +63,34 @@ export default function FoodPage() {
     return { totalCal, protein, carbs, fat, fiber };
   }, [meals]);
 
+  const [deleteError, setDeleteError] = useState("");
+
   const handleDelete = async (mealId: string) => {
     if (!confirm("Delete this meal?")) return;
+    setDeleteError("");
     try {
       await deleteMeal({ variables: { id: mealId } });
       refetch();
     } catch (err) {
-      console.error("Failed to delete meal:", err);
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete meal");
+    }
+  };
+
+  const handleEditMeal = async (mealId: string, name: string) => {
+    try {
+      await editMeal({ variables: { input: { id: mealId, name } } });
+      refetch();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to edit meal");
+    }
+  };
+
+  const handleDeleteItem = async (itemId: string) => {
+    try {
+      await deleteMealItem({ variables: { id: itemId } });
+      refetch();
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : "Failed to delete item");
     }
   };
 
@@ -70,6 +103,10 @@ export default function FoodPage() {
   return (
     <div className="h-full overflow-y-auto bg-sky-50 p-4 md:p-6">
       <div className="mx-auto max-w-6xl">
+        {deleteError && (
+          <div className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-600">{deleteError}</div>
+        )}
+
         {/* Header */}
         <div className="mb-4 flex items-center justify-between md:mb-6">
           <h1 className="text-lg font-bold text-sky-900 md:text-xl">Food Log</h1>
@@ -106,21 +143,26 @@ export default function FoodPage() {
                     })}
                     items={
                       (meal.items ?? []).map((item) => ({
+                        id: item.id,
                         name: item.foodName,
                         quantity: `${item.quantity} ${item.unit || ""}`.trim(),
                         calories: item.caloriesKcal ?? 0,
                         protein: item.proteinG ?? 0,
                         carbs: item.carbsG ?? 0,
                         fat: item.fatG ?? 0,
+                        fiber: item.fiberG ?? 0,
                       }))
                     }
+                    notes={meal.notes || undefined}
                     totals={{
                       calories: meal.totals?.caloriesKcal ?? 0,
                       protein: meal.totals?.proteinG ?? 0,
                       carbs: meal.totals?.carbsG ?? 0,
                       fat: meal.totals?.fatG ?? 0,
                     }}
-                    onDelete={() => handleDelete(meal.id)}
+                    onDelete={canEdit ? () => handleDelete(meal.id) : undefined}
+                    onEditMeal={canEdit ? (name) => handleEditMeal(meal.id, name) : undefined}
+                    onDeleteItem={canEdit ? handleDeleteItem : undefined}
                   />
                 ))}
               </div>

@@ -6,6 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "NutriChat",
   description: "Your AI nutrition companion",
+  icons: { icon: "/icon.png" },
 };
 
 export default function RootLayout({

@@ -33,10 +33,10 @@ export default function ChatBubble({ content, role, timestamp }: ChatBubbleProps
     <div className={cn("flex", isUser ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm",
+          "max-w-[70%] rounded-2xl px-4 py-2.5",
           isUser
             ? "rounded-br-md bg-emerald-500 text-white"
-            : "rounded-bl-md bg-white text-sky-900"
+            : "rounded-bl-md bg-gray-100 text-sky-900"
         )}
       >
         <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p>
